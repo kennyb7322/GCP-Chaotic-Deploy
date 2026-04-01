@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GCP Chaotic Deploy — 3D Architecture</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#070b14;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;overflow:hidden;width:1200px;height:628px;position:relative}
+canvas#bg{position:absolute;inset:0;z-index:0}
+
+/* Grid floor */
+.grid-floor{position:absolute;bottom:0;left:0;right:0;height:55%;background:linear-gradient(to top,rgba(99,102,241,.03),transparent);overflow:hidden;z-index:1}
+.grid-floor::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(99,102,241,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,.08) 1px,transparent 1px);background-size:50px 50px;transform:perspective(500px) rotateX(65deg);transform-origin:center top}
+
+/* Ambient glows */
+.glow{position:absolute;border-radius:50%;filter:blur(100px);z-index:1;pointer-events:none}
+.g1{width:400px;height:400px;top:-100px;left:100px;background:radial-gradient(circle,rgba(99,102,241,.2),transparent 70%)}
+.g2{width:350px;height:350px;bottom:50px;right:50px;background:radial-gradient(circle,rgba(255,61,113,.15),transparent 70%)}
+.g3{width:300px;height:300px;top:200px;left:500px;background:radial-gradient(circle,rgba(6,182,212,.12),transparent 70%)}
+
+/* Header */
+.header{position:absolute;top:28px;left:40px;z-index:10;animation:fadeSlideDown .8s ease-out}
+.brand{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#818cf8;font-weight:600;margin-bottom:4px}
+.title{font-size:36px;font-weight:800;color:#f1f5f9;letter-spacing:-1px;line-height:1.1}
+.title span{background:linear-gradient(135deg,#818cf8,#c084fc,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{font-size:14px;color:#64748b;margin-top:6px;letter-spacing:.5px}
+.subtitle em{font-style:normal;color:#94a3b8}
+
+/* Tech badges */
+.badges{display:flex;gap:8px;margin-top:14px}
+.badge{font-size:10px;padding:5px 12px;border-radius:20px;font-weight:700;letter-spacing:.8px;backdrop-filter:blur(10px)}
+.b-tf{background:rgba(98,60,228,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.25)}
+.b-go{background:rgba(0,173,216,.12);color:#22d3ee;border:1px solid rgba(34,211,238,.2)}
+.b-py{background:rgba(55,118,171,.12);color:#60a5fa;border:1px solid rgba(96,165,250,.2)}
+.b-ch{background:rgba(255,61,113,.12);color:#ff6b8a;border:1px solid rgba(255,107,138,.2)}
+.b-hi{background:rgba(52,211,153,.12);color:#34d399;border:1px solid rgba(52,211,153,.2)}
+
+/* Stats panel */
+.stats-panel{position:absolute;top:28px;right:40px;z-index:10;animation:fadeSlideDown .8s ease-out .2s both}
+.stat-row{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.stat-num{font-size:28px;font-weight:800;font-family:'SF Mono',ui-monospace,monospace;background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;min-width:40px;text-align:right}
+.stat-label{font-size:11px;color:#64748b;letter-spacing:.5px}
+
+/* 3D Layer Stack */
+.stack{position:absolute;left:50%;top:50%;transform:translate(-50%,-42%);z-index:5;perspective:1200px}
+.stack-inner{transform:rotateX(20deg) rotateY(-12deg) rotateZ(2deg);transform-style:preserve-3d}
+.layer{width:420px;height:52px;margin-bottom:8px;border-radius:12px;display:flex;align-items:center;padding:0 20px;position:relative;transform-style:preserve-3d;animation:layerSlide .7s ease-out both;cursor:default;overflow:hidden}
+.layer::before{content:'';position:absolute;bottom:-8px;left:8px;right:8px;height:8px;border-radius:0 0 8px 8px;opacity:.3}
+.layer::after{content:'';position:absolute;right:-6px;top:4px;bottom:4px;width:6px;border-radius:0 6px 6px 0;opacity:.2}
+.layer .shine{position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);animation:shimmer 4s ease-in-out infinite}
+.l1{background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#3730a3 100%);border:1px solid rgba(129,140,248,.2);animation-delay:.15s}
+.l1::before,.l1::after{background:#312e81}
+.l2{background:linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%);border:1px solid rgba(110,231,183,.15);animation-delay:.3s}
+.l2::before,.l2::after{background:#065f46}
+.l3{background:linear-gradient(135deg,#78350f 0%,#92400e 50%,#b45309 100%);border:1px solid rgba(253,186,116,.15);animation-delay:.45s}
+.l3::before,.l3::after{background:#92400e}
+.l4{background:linear-gradient(135deg,#1e3a5f 0%,#1e40af 50%,#2563eb 100%);border:1px solid rgba(147,197,253,.15);animation-delay:.6s}
+.l4::before,.l4::after{background:#1e40af}
+.layer-icon{font-size:18px;margin-right:12px;filter:drop-shadow(0 0 6px rgba(255,255,255,.2))}
+.layer-title{font-size:13px;font-weight:700;color:#fff;letter-spacing:.3px}
+.layer-sub{font-size:10px;color:rgba(255,255,255,.5);margin-left:auto;letter-spacing:.5px;font-family:ui-monospace,monospace}
+
+/* Chaos Engine Orb */
+.chaos-container{position:absolute;right:140px;top:52%;transform:translateY(-50%);z-index:8;animation:fadeIn 1s ease-out .8s both}
+.chaos-orb{width:120px;height:120px;position:relative;animation:orbFloat 4s ease-in-out infinite}
+.chaos-core{position:absolute;inset:30px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff6b8a,#ff3d71,#be123c);box-shadow:0 0 40px rgba(255,61,113,.4),0 0 80px rgba(255,61,113,.15),inset 0 0 20px rgba(255,255,255,.1);animation:corePulse 2s ease-in-out infinite}
+.orbit{position:absolute;inset:0;border:1.5px solid rgba(255,61,113,.3);border-radius:50%;animation:spin 5s linear infinite}
+.orbit:nth-child(2){inset:6px;border-color:rgba(255,61,113,.2);animation-duration:7s;animation-direction:reverse;border-style:dashed}
+.orbit:nth-child(3){inset:-6px;border-color:rgba(255,61,113,.15);animation-duration:9s;border-width:1px}
+.orbit-dot{position:absolute;width:6px;height:6px;background:#ff6b8a;border-radius:50%;box-shadow:0 0 10px #ff3d71;top:-3px;left:50%;transform:translateX(-50%)}
+.chaos-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2}
+.chaos-label .cl-icon{font-size:10px;color:#fecdd3;letter-spacing:3px;font-weight:800;text-transform:uppercase}
+.chaos-label .cl-score{font-size:22px;font-weight:900;color:#fff;margin-top:2px;text-shadow:0 0 20px rgba(255,61,113,.6)}
+
+/* Data flow particles */
+.flow-svg{position:absolute;inset:0;z-index:4;pointer-events:none}
+.data-path{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-dasharray:6 14;animation:flowDash 2.5s linear infinite}
+.dp1{stroke:rgba(129,140,248,.35);animation-delay:0s}
+.dp2{stroke:rgba(110,231,183,.3);animation-delay:.8s}
+.dp3{stroke:rgba(255,107,138,.3);animation-delay:1.6s}
+.dp4{stroke:rgba(253,186,116,.25);animation-delay:.4s}
+.dp5{stroke:rgba(34,211,238,.25);animation-delay:1.2s}
+
+/* Pipeline bar */
+.pipeline{position:absolute;bottom:30px;left:40px;right:40px;z-index:10;display:flex;align-items:center;gap:0;animation:fadeSlideUp 1s ease-out .5s both}
+.pipe-stage{flex:1;text-align:center;position:relative;padding:10px 4px}
+.pipe-dot{width:10px;height:10px;border-radius:50%;margin:0 auto 6px;position:relative}
+.pipe-dot::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid;opacity:.3;animation:dotPulse 2s ease-in-out infinite}
+.pd-purple{background:#818cf8;box-shadow:0 0 12px rgba(129,140,248,.4)}.pd-purple::after{border-color:#818cf8}
+.pd-green{background:#34d399;box-shadow:0 0 12px rgba(52,211,153,.4)}.pd-green::after{border-color:#34d399;animation-delay:.3s}
+.pd-amber{background:#fbbf24;box-shadow:0 0 12px rgba(251,191,36,.4)}.pd-amber::after{border-color:#fbbf24;animation-delay:.6s}
+.pd-blue{background:#60a5fa;box-shadow:0 0 12px rgba(96,165,250,.4)}.pd-blue::after{border-color:#60a5fa;animation-delay:.9s}
+.pd-red{background:#f87171;box-shadow:0 0 12px rgba(248,113,113,.4)}.pd-red::after{border-color:#f87171;animation-delay:1.2s}
+.pd-teal{background:#2dd4bf;box-shadow:0 0 12px rgba(45,212,191,.4)}.pd-teal::after{border-color:#2dd4bf;animation-delay:1.5s}
+.pipe-name{font-size:9px;color:#94a3b8;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.pipe-connector{width:100%;height:2px;background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.1),rgba(255,255,255,.05));position:absolute;top:14px;left:50%;z-index:-1}
+
+/* Module cards (floating) */
+.float-cards{position:absolute;left:40px;bottom:80px;z-index:6;display:flex;gap:10px;animation:fadeSlideUp .8s ease-out .7s both}
+.fcard{background:rgba(15,23,42,.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 14px;min-width:100px;text-align:center}
+.fcard-num{font-size:24px;font-weight:900;font-family:ui-monospace,monospace}
+.fn-purple{background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fn-teal{background:linear-gradient(135deg,#2dd4bf,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fn-amber{background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fn-rose{background:linear-gradient(135deg,#fb7185,#f43f5e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fn-sky{background:linear-gradient(135deg,#38bdf8,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fcard-label{font-size:8px;color:#64748b;letter-spacing:.8px;text-transform:uppercase;margin-top:2px;font-weight:600}
+
+/* Watermark */
+.watermark{position:absolute;bottom:32px;right:40px;z-index:10;text-align:right;animation:fadeIn 1s ease-out 1s both}
+.wm-name{font-size:11px;color:#475569;font-weight:700;letter-spacing:.5px}
+.wm-title{font-size:9px;color:#334155;letter-spacing:.3px}
+
+/* Keyframes */
+@keyframes fadeSlideDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes layerSlide{from{opacity:0;transform:translateX(-40px) translateZ(-20px)}to{opacity:1;transform:translateX(0) translateZ(0)}}
+@keyframes shimmer{0%{left:-100%}50%{left:100%}100%{left:100%}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes orbFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes corePulse{0%,100%{transform:scale(1);box-shadow:0 0 40px rgba(255,61,113,.4),0 0 80px rgba(255,61,113,.15)}50%{transform:scale(1.08);box-shadow:0 0 50px rgba(255,61,113,.6),0 0 100px rgba(255,61,113,.25)}}
+@keyframes flowDash{to{stroke-dashoffset:-60}}
+@keyframes dotPulse{0%,100%{transform:scale(1);opacity:.3}50%{transform:scale(1.8);opacity:0}}
+
+/* Particle canvas */
+#particles{position:absolute;inset:0;z-index:2;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div class="glow g1"></div>
+<div class="glow g2"></div>
+<div class="glow g3"></div>
+<div class="grid-floor"></div>
+
+<canvas id="particles"></canvas>
+
+<!-- Header -->
+<div class="header">
+  <div class="brand">UCS Solutions — Est. 1993</div>
+  <div class="title">GCP <span>Chaotic Deploy</span></div>
+  <div class="subtitle"><em>Enterprise Landing Zone</em> — Shift-Left · Chaos-First · HIPAA-Compliant</div>
+  <div class="badges">
+    <span class="badge b-tf">TERRAFORM</span>
+    <span class="badge b-go">GO</span>
+    <span class="badge b-py">PYTHON</span>
+    <span class="badge b-ch">CHAOS</span>
+    <span class="badge b-hi">HIPAA</span>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-panel">
+  <div class="stat-row"><div class="stat-num">15</div><div class="stat-label">Terraform Modules</div></div>
+  <div class="stat-row"><div class="stat-num">8</div><div class="stat-label">Chaos Experiments</div></div>
+  <div class="stat-row"><div class="stat-num">16</div><div class="stat-label">HIPAA Controls</div></div>
+  <div class="stat-row"><div class="stat-num">15</div><div class="stat-label">Architecture Decisions</div></div>
+  <div class="stat-row"><div class="stat-num">6</div><div class="stat-label">CI/CD Pipeline Stages</div></div>
+</div>
+
+<!-- Data Flow Lines -->
+<svg class="flow-svg" viewBox="0 0 1200 628" preserveAspectRatio="none">
+  <path class="data-path dp1" d="M300,200 C400,180 500,220 600,280 S750,320 800,300"/>
+  <path class="data-path dp2" d="M350,250 C450,230 550,300 650,310 S780,280 850,350"/>
+  <path class="data-path dp3" d="M820,220 C870,260 900,300 920,380 S940,420 960,400"/>
+  <path class="data-path dp4" d="M200,350 C300,320 400,380 500,360 S600,340 650,380"/>
+  <path class="data-path dp5" d="M400,150 C500,160 600,200 700,240 S800,260 850,240"/>
+</svg>
+
+<!-- 3D Layer Stack -->
+<div class="stack">
+  <div class="stack-inner">
+    <div class="layer l4">
+      <div class="shine"></div>
+      <span class="layer-icon">⚡</span>
+      <span class="layer-title">Stage 4 — Workloads & Observability</span>
+      <span class="layer-sub">GKE · WIF · Audit</span>
+    </div>
+    <div class="layer l3">
+      <div class="shine"></div>
+      <span class="layer-icon">🔐</span>
+      <span class="layer-title">Stage 3 — Security Stack</span>
+      <span class="layer-sub">CMEK · VPC SC · SCC</span>
+    </div>
+    <div class="layer l2">
+      <div class="shine"></div>
+      <span class="layer-icon">🌐</span>
+      <span class="layer-title">Stage 2 — Identity & Network</span>
+      <span class="layer-sub">VPC · VPN · Entra ID</span>
+    </div>
+    <div class="layer l1">
+      <div class="shine"></div>
+      <span class="layer-icon">🏗️</span>
+      <span class="layer-title">Stage 1 — Foundation</span>
+      <span class="layer-sub">Org · Policies · Assured</span>
+    </div>
+  </div>
+</div>
+
+<!-- Chaos Engine Orb -->
+<div class="chaos-container">
+  <div class="chaos-orb">
+    <div class="orbit"><div class="orbit-dot"></div></div>
+    <div class="orbit"><div class="orbit-dot"></div></div>
+    <div class="orbit"><div class="orbit-dot"></div></div>
+    <div class="chaos-core"></div>
+    <div class="chaos-label">
+      <span class="cl-icon">CHAOS</span>
+      <span class="cl-score">85</span>
+    </div>
+  </div>
+</div>
+
+<!-- Module Cards -->
+<div class="float-cards">
+  <div class="fcard"><div class="fcard-num fn-purple">15</div><div class="fcard-label">TF Modules</div></div>
+  <div class="fcard"><div class="fcard-num fn-teal">3</div><div class="fcard-label">Go CLI Tools</div></div>
+  <div class="fcard"><div class="fcard-num fn-amber">8</div><div class="fcard-label">OPA Policies</div></div>
+  <div class="fcard"><div class="fcard-num fn-rose">8</div><div class="fcard-label">Chaos Tests</div></div>
+  <div class="fcard"><div class="fcard-num fn-sky">100+</div><div class="fcard-label">Page README</div></div>
+</div>
+
+<!-- CI/CD Pipeline -->
+<div class="pipeline">
+  <div class="pipe-stage"><div class="pipe-dot pd-purple"></div><div class="pipe-name">Lint</div><div class="pipe-connector"></div></div>
+  <div class="pipe-stage"><div class="pipe-dot pd-green"></div><div class="pipe-name">OPA Gate</div><div class="pipe-connector"></div></div>
+  <div class="pipe-stage"><div class="pipe-dot pd-amber"></div><div class="pipe-name">Infracost</div><div class="pipe-connector"></div></div>
+  <div class="pipe-stage"><div class="pipe-dot pd-blue"></div><div class="pipe-name">Terratest</div><div class="pipe-connector"></div></div>
+  <div class="pipe-stage"><div class="pipe-dot pd-red"></div><div class="pipe-name">Deploy</div><div class="pipe-connector"></div></div>
+  <div class="pipe-stage"><div class="pipe-dot pd-teal"></div><div class="pipe-name">HIPAA Gate</div></div>
+</div>
+
+<!-- Watermark -->
+<div class="watermark">
+  <div class="wm-name">Kenneth P. Barnes, Ph.D.</div>
+  <div class="wm-title">Founder & CTO/CISO — UCS Solutions</div>
+</div>
+
+<!-- Particle System -->
+<script>
+const c=document.getElementById('particles'),x=c.getContext('2d');
+c.width=1200;c.height=628;
+const particles=[];
+class P{constructor(){this.reset()}
+reset(){this.x=Math.random()*1200;this.y=Math.random()*628;this.vx=(Math.random()-.5)*.3;this.vy=(Math.random()-.5)*.3;this.r=Math.random()*1.5+.5;this.a=Math.random()*.3+.05;this.color=['129,140,248','110,231,183','255,107,138','253,186,116','34,211,238'][Math.floor(Math.random()*5)]}
+update(){this.x+=this.vx;this.y+=this.vy;if(this.x<0||this.x>1200)this.vx*=-1;if(this.y<0||this.y>628)this.vy*=-1}
+draw(){x.beginPath();x.arc(this.x,this.y,this.r,0,Math.PI*2);x.fillStyle=`rgba(${this.color},${this.a})`;x.fill()}}
+for(let i=0;i<80;i++)particles.push(new P());
+function animate(){x.clearRect(0,0,1200,628);
+for(let i=0;i<particles.length;i++){particles[i].update();particles[i].draw();
+for(let j=i+1;j<particles.length;j++){const dx=particles[i].x-particles[j].x,dy=particles[i].y-particles[j].y,d=Math.sqrt(dx*dx+dy*dy);
+if(d<100){x.beginPath();x.moveTo(particles[i].x,particles[i].y);x.lineTo(particles[j].x,particles[j].y);x.strokeStyle=`rgba(129,140,248,${.08*(1-d/100)})`;x.lineWidth=.5;x.stroke()}}}
+requestAnimationFrame(animate)}
+animate();
+</script>
+</body>
+</html>
